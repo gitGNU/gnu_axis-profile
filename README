@@ -1,0 +1,44 @@
+Axis Profile
+------------
+
+Simple utility that collects current program counter data from a
+specially modified Linux kernel at a set rate and compares this to all
+debug symbols in the kernel and optionally any user space programs or
+libraries.
+
+Currently, the kernel modifications (SYSTEM_PROFILER=y) exist only for
+the Axis Communications CRIS ports of Linux in the mainline version of
+the Linux kernel.
+
+Written in C, but uses some external programs via system(3) (expect,
+wget and one of objdump, nm, readelf).
+
+The utility should be possible run on any operating system with these
+tools installed.
+
+Most Linux kernel architectures have support for profiling via other
+means, and userspace applications uses toolchain support for profiling (gprof)
+which is a more intrusive solution (toolchain support needed, profiled
+code runs slower) etc.
+
+Advantages of doing it this way is the minor changes needed in the
+kernel, the light weight nature of the profiling (it doesn't cost much
+to copy a PC to a circular memory buffer).
+
+It can also give profiling info for all levels of the system at the
+same time (kernel, modules, libraries, and userspace programs)
+
+The downside is that the profiling information is not exact,
+but represents an average Some code, which is triggered by the
+timer interrupt used for polling the PC will never be active when
+the polling occurs, and some interrupts may have higher priority.
+
+Self modifying code or any other code that does not have any debug
+symbols (such as library trampolines) will not be attributed
+correctly either.
+
+Questions and comments about axis_profile should be sent to:
+
+axis-profile@axis.com
+
+
