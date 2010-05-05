@@ -158,7 +158,7 @@ static struct symbol_table *get_functions(const char *name)
 
 		sprintf(path, "%s/System.map", kernel_dir);
 		if (!(f = fopen(path, "r"))) {
-			printf("Could not extract kernel symbols: %m\n");
+			DEBUG(1, "Could not extract kernel symbols: %m\n");
 			return NULL;
 		}
 
@@ -211,7 +211,7 @@ static struct symbol_table *get_functions(const char *name)
 	}
 	sprintf(command, fmt, binary);
 	if (!(f = popen(command, "r"))) {
-		printf("Could not extract symbols from %s: %m\n", binary);
+		DEBUG(1, "Could not extract symbols from %s: %m\n", binary);
 		free(binary);
 		return NULL;
 	}
@@ -220,7 +220,7 @@ static struct symbol_table *get_functions(const char *name)
 
 	ret = pclose(f);
 	if (ret < 0 || !WIFEXITED(ret) || WEXITSTATUS(ret)) {
-		printf("Could not extract symbols from %s\n", binary);
+		DEBUG(1, "Could not extract symbols from %s\n", binary);
 		free(binary);
 		return NULL;
 	}
@@ -420,11 +420,11 @@ static char *find_binary(const char *app)
 	if (!binary)
 		binary = find_file("target", app); /* Case 5 */
 	if (!binary) {
-		printf("Application %s not found!\n", app);
+		DEBUG(1,"Application %s not found!\n", app);
 		return NULL;
 	}
 
-	DEBUG(2, "Found binary %s\n", binary);
+	DEBUG(1, "Found binary %s\n", binary);
 
 	add_binary_to_cache(app, binary);
 
