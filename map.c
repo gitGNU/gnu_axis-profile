@@ -72,12 +72,17 @@ static char *get_map(unsigned int pid)
 	if (!pid) {
 		size_t map_size = MAX_STRING_LEN;
 		char *modules = get_proc_file("modules");
-		char *symbols = get_proc_file("ksyms");
+		char *symbols = NULL;
 		char *map = malloc(map_size);
 		char *mod;
 		char *next_mod;
 		unsigned int length;
 		unsigned int start;
+
+		symbols = get_proc_file("kallsyms");
+		if (!symbols) {
+			symbols = get_proc_file("ksyms");
+		}
 
 		/* Create a faked maps file with kernel and modules */
 		sprintf(map, "c0000000-c0200000 r-xp 00000000 00:00 200000 kernel\n");

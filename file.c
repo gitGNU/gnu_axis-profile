@@ -38,6 +38,7 @@
 #include "file.h"
 #include "profile.h"
 #include "errno.h"
+#include "debug.h"
 
 /****************** CONSTANT AND MACRO SECTION ******************************/
 
@@ -92,7 +93,8 @@ char *get_proc_file(const char *filename)
 
 	ret = pclose(f);
 
-	if (ret < 0 || !WIFEXITED(ret) || WEXITSTATUS(ret)) {
+	if (ret < 0 || file_size == 0 || !WIFEXITED(ret) || WEXITSTATUS(ret)) {
+		DEBUG(1, "Failed to read %s\n", filename);
 		free(file);
 		return NULL;
 	}
