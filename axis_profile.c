@@ -28,12 +28,13 @@
 
 /****************** INCLUDE FILES SECTION ***********************************/
 
-#define _GNU_SOURCE                     /* To get getline() */
+#define _GNU_SOURCE	/* To get getline() */
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <poll.h>
 
 #include "debug.h"
 #include "application.h"
@@ -61,9 +62,6 @@ static void get_applications(void);
 
 struct application *find_max_app(void);
 struct function *find_max_function(struct application *app);
-
-static void print_stats(void);
-static void print_and_exit(int exit_code);
 
 static void handle_signal(int signum);
 
@@ -335,56 +333,98 @@ struct function *find_max_function(struct application *app)
 	return best_func;
 }
 
+static void print_stat(struct application *app)
+{
+	int app_samples;
+	int i;
+
+	if (!app->samples)
+		return;
+
+	printf("Application %s (pid %d) %d%% (%.2f seconds)\n",
+		app->name, app->pid, 100 * app->samples / samples,
+		app->samples / 100.0);
+
+	app_samples = 0;
+	for (i = 0; i < function_count; i++) {
+		struct function *f = find_max_function(app);
+
+		if (!f || !f->samples)
+			break;
+
+		if (f->map->offset || !strcmp(f->map->name, "kernel")) {
+			printf("%9.2fs %6.2f%%  %-25s  %s\n",
+				f->samples / 100.0,
+				100.0 * f->samples / app->samples,
+				f->name, f->map->name);
+		} else {
+			printf("%9.2fs %6.2f%%  %-25s\n",
+				f->samples / 100.0,
+				100.0 * f->samples / app->samples,
+				f->name);
+		}
+
+		app_samples += f->samples;
+	}
+	printf("---------- -------\n");
+	printf("%9.2fs %6.2f%%\n",
+		app_samples / 100.0,
+		100.0 * app_samples / app->samples);
+
+	printf("\n");
+}
+
 /* Print the statistics */
 static void print_stats(void)
 {
-	struct application *app;
+	struct application* app;
 
 	printf("Total sample time: %.2f seconds\n\n", samples / 100.0);
 
 	while ((app = find_max_app())) {
-		int app_samples;
-		int i;
-
-		if (!app->samples)
-			break;
-
-		printf("Application %s (pid %d) %d%% (%.2f seconds)\n",
-			app->name, app->pid, 100 * app->samples / samples,
-			app->samples / 100.0);
-
-		app_samples = 0;
-		for (i = 0; i < function_count; i++) {
-			struct function *f = find_max_function(app);
-
-			if (!f || !f->samples)
-				break;
-
-			if (f->map->offset || !strcmp(f->map->name, "kernel")) {
-				printf("%9.2fs %6.2f%%  %-25s  %s\n",
-					f->samples / 100.0,
-					100.0 * f->samples / app->samples,
-					f->name, f->map->name);
-			} else {
-				printf("%9.2fs %6.2f%%  %-25s\n",
-					f->samples / 100.0,
-					100.0 * f->samples / app->samples,
-					f->name);
-			}
-
-			app_samples += f->samples;
-		}
-		printf("---------- -------\n");
-		printf("%9.2fs %6.2f%%\n",
-			app_samples / 100.0,
-			100.0 * app_samples / app->samples);
-
-		printf("\n");
+		print_stat(app);
 	}
 
-	printf("Lost %d kernel samples and %d user mode samples\n",
-		lost_kernel_samples, lost_user_samples);
+	/* Reset print flag */
+	app = applications;
+	while (app) {
+		struct map* m = app->maps;
+		/* Have to look in all maps. */
+		while (m) {
+			struct function* f = m->functions;
+
+			while (f) {
+				f->printed = 0;
+				f = f->next;
+			}
+			m = m->next;
+		}
+		app->printed = 0;
+		app = app->next;
+	}
+
+	DEBUG(1, "Lost %d kernel samples and %d user mode samples\n",
+	lost_kernel_samples, lost_user_samples);
 }
+
+static void wait_sample_interval(void)
+{
+	struct pollfd fd = {
+		.fd = STDIN_FILENO,
+		.events = POLLIN,
+		.revents = 0,
+	};
+	int ret;
+
+	ret = poll(&fd, 1, sample_interval * 1000);
+
+	if (ret > 0) {
+		char buf;
+		read(STDIN_FILENO, &buf, sizeof(buf));
+		print_stats();
+	}
+}
+
 
 static void print_and_exit(int exit_code)
 {
@@ -474,8 +514,8 @@ int main(int argc, char **argv)
 	top_dir = getenv("AXIS_TOP_DIR");
 	kernel_dir = getenv("AXIS_KERNEL_DIR");
 
-	if ((top_dir == NULL) || (kernel_dir == NULL)) {
-		printf("AXIS_TOP_DIR and/or AXIS_KERNEL_DIR not found in env\n");
+	if (top_dir == NULL) {
+		printf("AXIS_TOP_DIR is not found in env\n");
 		exit(1);
 	}
 
@@ -485,7 +525,7 @@ int main(int argc, char **argv)
 	get_applications();
 
 	fprintf(stderr,
-			"Collecting samples. Press CTRL-C to stop and print statistics.\n");
+		"Collecting samples. Press ENTER to print statistics.\n");
 
 	while (1) {
 		char command[MAX_STRING_LEN];
@@ -517,8 +557,7 @@ int main(int argc, char **argv)
 			printf("Couldn't get any more samples\n");
 			print_and_exit(EXIT_FAILURE);
 		}
-
-		sleep(sample_interval);
+		wait_sample_interval();
 	}
 }
 
