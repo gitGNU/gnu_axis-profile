@@ -110,11 +110,11 @@ char *find_file(const char *top_path, const char *filename)
 	if (top_path) {
 		sprintf(command,
 			"find %s/%s \\( -type f -o -type l \\) -name %s "
-			"-exec file -L {} \\; | grep ELF | cut -d : -f 1",
+			"-exec file -L {} \\; 2> /dev/null | grep ELF | cut -d : -f 1",
 			top_dir, top_path, filename);
 	} else {
 		sprintf(command,
-			"file -L %s | grep ELF | cut -d : -f 1", filename);
+			"file -L %s 2> /dev/null | grep ELF | cut -d : -f 1", filename);
 	}
 	if (!(f = popen(command, "r"))) {
 		return NULL;
