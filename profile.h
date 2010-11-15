@@ -33,7 +33,7 @@
 
 /****************** CONSTANT AND MACRO SECTION ******************************/
 
-#define MAX_STRING_LEN 256
+#define MAX_STRING_LEN 512
 
 enum dump_symbols {
 	readelf = 0,
