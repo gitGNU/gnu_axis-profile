@@ -284,56 +284,56 @@ static void get_applications(void)
 			ret = sscanf(line, "%d %*s %d", &pid, &size);
 		}
 		free(line);
-		if ((ret == 2) && (size != 0)) {
-			app = add_application(pid, find_application(0));
-			if (app) {
-				char buffer[MAX_STRING_LEN];
-				char *status;
-				if (trace_apps) {
-					int found = 0;
+		if (ret != 2 || size == 0)
+			continue;
 
-					for (i = 0; i < trace_apps; i++) {
-						if (!strstr(app->name,
-							    trace_app[i])) {
-							found = 1;
-						}
-					}
-					if (!found) {
-						free(app);
-						continue;
+		app = add_application(pid, find_application(0));
+		if (app) {
+			char buffer[MAX_STRING_LEN];
+			char *status;
+			unsigned int s;
+			FILE *f2;
+			char *line = NULL;
+			int pid2;
+
+			if (trace_apps) {
+				int found = 0;
+
+				for (i = 0; i < trace_apps; i++) {
+					if (!strstr(app->name,
+						    trace_app[i])) {
+						found = 1;
 					}
 				}
-
-				/* Check for NPTL threads */
-				{
-						char buffer[MAX_STRING_LEN];
-						unsigned int s;
-						FILE* f;
-						char* line = NULL;
-						int pid2;
-
-						sprintf(buffer, "profile_run_remote.exp %s 'ls -la /proc/%d/task'", remote_host, pid);
-						f = popen(buffer, "r");
-						while (!feof(f)) {
-							getline(&line, &s, f);
-							if (sscanf(line, "%*s %*s %*s %*s %*s %*s %*s %*s %d", &pid2) == 1)
-							{
-								if (pid2 != pid) {
-									struct application *app2;
-									app2 = add_application(pid2, find_application(0));
-									app2->next = applications;
-									applications = app2;
-								}
-							}
-							free(line);
-							line = NULL;
-						}
-						pclose(f);
-
+				if (!found) {
+					free(app);
+					continue;
 				}
-				app->next = applications;
-				applications = app;
 			}
+
+			/* Check for NPTL threads */
+			sprintf(buffer, "profile_run_remote.exp %s "
+				"'ls -la /proc/%d/task'", remote_host, pid);
+			f2 = popen(buffer, "r");
+			while (!feof(f2)) {
+				getline(&line, &s, f2);
+				if (sscanf(line,
+					   "%*s %*s %*s %*s %*s %*s %*s %*s %d",
+					   &pid2) == 1) {
+					if (pid2 != pid) {
+						struct application *app2;
+						app2 = add_application(pid2,
+							find_application(0));
+						app2->next = applications;
+						applications = app2;
+					}
+				}
+				free(line);
+				line = NULL;
+			}
+			pclose(f2);
+			app->next = applications;
+			applications = app;
 		}
 	}
 	pclose(f);
