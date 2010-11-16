@@ -69,6 +69,7 @@ static void handle_signal(int signum);
 
 int verbose;
 char remote_host[MAX_STRING_LEN];
+char cpu_arch[MAX_STRING_LEN];
 char *top_dir;
 char *kernel_dir;
 
@@ -204,6 +205,28 @@ static void add_sample(int pid, unsigned int address)
 		else
 			lost_kernel_samples++;
 	}
+}
+
+/* Get CPU architecture from target */
+static void get_cpu_arch(void)
+{
+	char buffer[MAX_STRING_LEN];
+	unsigned int s;
+	FILE *f;
+	char *line = NULL;
+
+	sprintf(buffer, "profile_run_remote.exp %s 'uname -m'", remote_host);
+	f = popen(buffer, "r");
+	getline(&line, &s, f);
+	free(line);
+	line = NULL;
+	getline(&line, &s, f);
+	/* Strip \r\n */
+	line[strlen(line)-2] = '\0';
+	strcpy(cpu_arch, line);
+	printf("Architecture: %s\n", cpu_arch);
+	free(line);
+	pclose(f);
 }
 
 /* Get all applications from target */
