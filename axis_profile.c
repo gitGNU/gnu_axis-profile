@@ -183,7 +183,7 @@ increment_function(struct application *app, unsigned int address)
 	DEBUG(3, "Found address %X in %s:%s\n", address, m->name, f->name);
 	if(!f->next) {
 		// catchall func
-		DEBUG(2, "Address %X in %s unknown\n", address, m->name);
+		DEBUG(1, "Address %X in %s unknown\n", address, m->name);
 	}
 	f->samples++;
 }
@@ -199,7 +199,7 @@ static void add_sample(int pid, unsigned int address)
 		DEBUG(3, "Add sample pid %d address %X\n", pid, address);
 		increment_function(app, address);
 	} else {
-		DEBUG(3, "Lost sample pid %d address %X\n", pid, address);
+		DEBUG(1, "Lost sample pid %d address %X\n", pid, address);
 		if (pid)
 			lost_user_samples++;
 		else
@@ -240,6 +240,7 @@ static void get_applications(void)
 	struct application *app;
 	int i;
 
+	printf("Retrieving application information (takes quite some time)\n");
 	/* Add kernel */
 	app = add_application(0, NULL);
 	if (app) {
