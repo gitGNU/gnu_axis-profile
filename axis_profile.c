@@ -498,8 +498,82 @@ static void handle_signal(int signum)
 	}
 }
 
+void get_cpu_samples(int cpu, int cpu_count)
+{
+	char command[MAX_STRING_LEN];
+	FILE *f;
+	int ret;
+
+	if (cpu_count > 1)
+		sprintf(command,
+			"wget --proxy=off -O - "
+			"ftp://root:pass@%s/proc/system_profile%d 2>/dev/null",
+			remote_host, cpu);
+	else
+		sprintf(command,
+			"wget --proxy=off -O - "
+			"ftp://root:pass@%s/proc/system_profile 2>/dev/null",
+			remote_host);
+
+	if (!(f = popen(command, "r"))) {
+		printf("Couldn't get any more samples\n");
+		print_and_exit(EXIT_FAILURE);
+	}
+
+	while (!feof(f)) {
+		unsigned int pid;
+		unsigned int sample;
+
+		fread(&pid, sizeof(unsigned int), 1, f);
+		fread(&sample, sizeof(unsigned int), 1, f);
+		if (sample)
+			add_sample(pid, sample);
+	}
+
+	ret = pclose(f);
+	if (ret < 0 || !WIFEXITED(ret) || WEXITSTATUS(ret)) {
+		printf("Couldn't get any more samples\n");
+		print_and_exit(EXIT_FAILURE);
+	}
+}
+
+int get_cpu_count(void)
+{
+	char command[MAX_STRING_LEN];
+	FILE *f;
+	char* line = NULL;
+	unsigned int s;
+	int ret;
+
+	sprintf(command, "profile_run_remote.exp %s 'cat /proc/cpuinfo | grep processor | wc -l'", remote_host);
+	f = popen(command, "r");
+	getline(&line, &s, f);
+	free(line);
+	line = NULL;
+	getline(&line, &s, f);
+	ret = atoi(line);
+	printf("CPU count: %d\n", ret);
+	free(line);
+	return ret;
+}
+
+void enable_profiling(int cpu_count)
+{
+	int cpu;
+	printf("Enabling profiling on target\n");
+	for (cpu = 0; cpu < cpu_count; cpu++) {
+		char command[MAX_STRING_LEN];
+		if (cpu_count > 1)
+			sprintf(command, "profile_run_remote.exp %s 'echo 1 > /proc/system_profile%d'", remote_host, cpu);
+		else
+			sprintf(command, "profile_run_remote.exp %s 'echo 1 > /proc/system_profile'", remote_host);
+		system(command);
+	}
+}
+
 int main(int argc, char **argv)
 {
+	int cpu_count;
 	while (1) {
 		int c = getopt(argc, argv, "hv:c:s:p:a:b:d:");
 
@@ -575,41 +649,18 @@ int main(int argc, char **argv)
 	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 
+	get_cpu_arch();
+	cpu_count = get_cpu_count();
 	get_applications();
+	enable_profiling(cpu_count);
 
 	fprintf(stderr,
 		"Collecting samples. Press ENTER to print statistics.\n");
 
 	while (1) {
-		char command[MAX_STRING_LEN];
-		FILE *f;
-		int ret;
-
-		sprintf(command,
-			"wget --proxy=off -O - "
-			"ftp://root:pass@%s/proc/system_profile 2>/dev/null",
-			remote_host);
-
-		if (!(f = popen(command, "r"))) {
-			printf("Couldn't get any more samples\n");
-			print_and_exit(EXIT_FAILURE);
-		}
-
-		while (!feof(f)) {
-			unsigned int pid;
-			unsigned int sample;
-
-			fread(&pid, sizeof(unsigned int), 1, f);
-			fread(&sample, sizeof(unsigned int), 1, f);
-			if (sample)
-				add_sample(pid, sample);
-		}
-
-		ret = pclose(f);
-		if (ret < 0 || !WIFEXITED(ret) || WEXITSTATUS(ret)) {
-			printf("Couldn't get any more samples\n");
-			print_and_exit(EXIT_FAILURE);
-		}
+		int i;
+		for (i = 0; i < cpu_count; i++)
+			get_cpu_samples(i, cpu_count);
 		wait_sample_interval();
 	}
 }

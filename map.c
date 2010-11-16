@@ -85,7 +85,10 @@ static char *get_map(unsigned int pid)
 		}
 
 		/* Create a faked maps file with kernel and modules */
-		sprintf(map, "c0000000-c0200000 r-xp 00000000 00:00 200000 kernel\n");
+		if (!strcmp(cpu_arch, "mips"))
+		   	sprintf(map, "80000000-81000000 r-xp 00000000 00:00 200000 kernel\n");
+		else
+			sprintf(map, "c0000000-c0200000 r-xp 00000000 00:00 200000 kernel\n");
 
 		for (mod = modules; mod; mod = next_mod) {
 			char module_name[MAX_STRING_LEN];

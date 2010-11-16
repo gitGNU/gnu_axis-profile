@@ -46,6 +46,7 @@ enum dump_symbols {
 extern char *top_dir;
 extern char *kernel_dir;
 extern char remote_host[];
+extern char cpu_arch[];
 
 enum dump_symbols get_dump_symbols(void);
 
