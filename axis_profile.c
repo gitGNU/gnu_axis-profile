@@ -286,6 +286,8 @@ static void get_applications(void)
 		if ((ret == 2) && (size != 0)) {
 			app = add_application(pid, find_application(0));
 			if (app) {
+				char buffer[MAX_STRING_LEN];
+				char *status;
 				if (trace_apps) {
 					int found = 0;
 
@@ -301,6 +303,33 @@ static void get_applications(void)
 					}
 				}
 
+				/* Check for NPTL threads */
+				{
+						char buffer[MAX_STRING_LEN];
+						unsigned int s;
+						FILE* f;
+						char* line = NULL;
+						int pid2;
+
+						sprintf(buffer, "profile_run_remote.exp %s 'ls -la /proc/%d/task'", remote_host, pid);
+						f = popen(buffer, "r");
+						while (!feof(f)) {
+							getline(&line, &s, f);
+							if (sscanf(line, "%*s %*s %*s %*s %*s %*s %*s %*s %d", &pid2) == 1)
+							{
+								if (pid2 != pid) {
+									struct application *app2;
+									app2 = add_application(pid2, find_application(0));
+									app2->next = applications;
+									applications = app2;
+								}
+							}
+							free(line);
+							line = NULL;
+						}
+						pclose(f);
+
+				}
 				app->next = applications;
 				applications = app;
 			}
