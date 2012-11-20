@@ -210,6 +210,7 @@ static struct symbol_table *get_functions(const char *name)
 			"awk '{ print $1 \" \" $2 \" \" $3 }'";
 	}
 	sprintf(command, fmt, binary);
+	DEBUG(20, "Symbol dump command:\n===\n%s\n===\n", command);
 	if (!(f = popen(command, "r"))) {
 		DEBUG(1, "Could not extract symbols from %s: %m\n", binary);
 		free(binary);
@@ -256,7 +257,8 @@ read_symbol_table(const char *name, FILE *symbol_file)
 	struct function *symbol = calloc(1, sizeof(struct function));
 	char *line = NULL;
 	char type[20];
-	unsigned int size;
+	size_t size;
+	memset(symbol, 0, sizeof(struct function));
 
 	while (getline(&line, &size, symbol_file) != -1) {
 		if (sscanf(line, "%lX %s %as",
@@ -273,13 +275,13 @@ read_symbol_table(const char *name, FILE *symbol_file)
 				/* at least and obscure the real symbols. */
 				continue;
 			} else if (isdigit(*type) || isxdigit(*type)) {
+				unsigned int val;
 				if (get_dump_symbols() == readelf) {
-					symbol->end = symbol->start + atoi(type);
+					val = atoi(type);
 				} else {
-					symbol->end = symbol->start + strtol(type, NULL, 16);
+					val = strtol(type, NULL, 16);
 				}
-				/*      printf("Got symbol %s start %lX len %s (%d)\n", */
-				/*          symbol->name, symbol->start, type, symbol->end - symbol->start); */
+				symbol->end = (0xffffffff & symbol->start) + val;
 			} else if (*type != 't' && *type != 'T') {
 				continue;
 			}
@@ -293,10 +295,15 @@ read_symbol_table(const char *name, FILE *symbol_file)
 			}
 			last_symbol = symbol;
 
-			DEBUG(2, "Got function %s %lX (%ld)\n", symbol->name, symbol->start,
-					symbol->end - symbol->start);
+			symbol->end &= 0xffffffff;
+			symbol->start &= 0xffffffff;
+
+			DEBUG(2, "Got function %s %lX (%ld)\n",
+				symbol->name, symbol->start,
+				symbol->end - symbol->start);
 
 			symbol = calloc(1, sizeof(struct function));
+			memset(symbol, 0, sizeof(struct function));
 		}
 	}
 
@@ -304,11 +311,14 @@ read_symbol_table(const char *name, FILE *symbol_file)
 	free(symbol);
 
 	if (symbols) {
-		/* Calcultate the end of all symbols (that do not have one yet). */
+		/* Calculate the end of all symbols (that do not have one yet). */
 		for (symbol = symbols; symbol->next; symbol = symbol->next) {
 			if (!symbol->end) {
 				symbol->end = symbol->next->start;
 			}
+			DEBUG(30, "Symbol %s (%lX - %lX)\n",
+				symbol->name,
+				symbol->start, symbol->end);
 		}
 
 		/* Set the end of the last symbol (if it is not set already). */
