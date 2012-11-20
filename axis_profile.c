@@ -211,7 +211,7 @@ static void add_sample(int pid, unsigned int address)
 static void get_cpu_arch(void)
 {
 	char buffer[MAX_STRING_LEN];
-	unsigned int s;
+	size_t s;
 	FILE *f;
 	char *line = NULL;
 
@@ -274,7 +274,7 @@ static void get_applications(void)
 	f = popen(buffer, "r");
 	while (!feof(f)) {
 		char *line = NULL;
-		unsigned int s;
+		size_t s;
 
 		getline(&line, &s, f);
 		if (restricted_ps) {
@@ -289,11 +289,9 @@ static void get_applications(void)
 
 		app = add_application(pid, find_application(0));
 		if (app) {
-			char buffer[MAX_STRING_LEN];
-			char *status;
-			unsigned int s;
+			char buf2[MAX_STRING_LEN];
 			FILE *f2;
-			char *line = NULL;
+			line = NULL;
 			int pid2;
 
 			if (trace_apps) {
@@ -312,9 +310,9 @@ static void get_applications(void)
 			}
 
 			/* Check for NPTL threads */
-			sprintf(buffer, "profile_run_remote.exp %s "
+			sprintf(buf2, "profile_run_remote.exp %s "
 				"'ls -la /proc/%d/task'", remote_host, pid);
-			f2 = popen(buffer, "r");
+			f2 = popen(buf2, "r");
 			while (!feof(f2)) {
 				getline(&line, &s, f2);
 				if (sscanf(line,
@@ -542,17 +540,17 @@ int get_cpu_count(void)
 	char command[MAX_STRING_LEN];
 	FILE *f;
 	char* line = NULL;
-	unsigned int s;
+	size_t s;
 	int ret;
 
-	sprintf(command, "profile_run_remote.exp %s 'cat /proc/cpuinfo | grep processor | wc -l'", remote_host);
+	sprintf(command,
+		"wget --proxy=off -O - ftp://root:pass@%s/proc/cpuinfo "
+		" 2>/dev/null | grep processor | wc -l",
+		remote_host);
 	f = popen(command, "r");
 	getline(&line, &s, f);
-	free(line);
-	line = NULL;
-	getline(&line, &s, f);
 	ret = atoi(line);
-	printf("CPU count: %d\n", ret);
+	DEBUG(10, "CPU count: %d\n", ret);
 	free(line);
 	return ret;
 }
@@ -560,7 +558,7 @@ int get_cpu_count(void)
 void enable_profiling(int cpu_count)
 {
 	int cpu;
-	printf("Enabling profiling on target\n");
+	DEBUG(1, "Enabling profiling on target\n");
 	for (cpu = 0; cpu < cpu_count; cpu++) {
 		char command[MAX_STRING_LEN];
 		if (cpu_count > 1)
