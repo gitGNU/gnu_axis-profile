@@ -19,14 +19,17 @@
 
 AXIS_USABLE_LIBS = UCLIBC GLIBC
 AXIS_AUTO_DEPEND = yes
--include $(AXIS_TOP_DIR)/tools/build/Rules.axis
+-include $(AXIS_TOP_DIR)/tools/build/rules/common.mak
 
 CFLAGS    += -DAXIS_PROFILER_VERSION=\"3.3.0\"
 
 PROGS     = axis_profile
 SCRIPTS   = $(wildcard *.exp)
 
-BINDIR    = $(prefix)/usr/local/bin
+prefix    ?= /usr/local
+build_prefix ?= $(prefix)
+BINDIR    ?= $(build_prefix)/bin
+INSTALL   ?= install
 
 SRCS      = axis_profile.c application.c file.c function.c map.c
 
