@@ -311,13 +311,12 @@ static void get_applications(void)
 
 			/* Check for NPTL threads */
 			sprintf(buf2, "profile_run_remote.exp %s "
-				"'ls -la /proc/%d/task'", remote_host, pid);
+				"'ls -1 /proc/%d/task'", remote_host, pid);
 			f2 = popen(buf2, "r");
 			while (!feof(f2)) {
 				getline(&line, &s, f2);
-				if (sscanf(line,
-					   "%*s %*s %*s %*s %*s %*s %*s %*s %d",
-					   &pid2) == 1) {
+				pid2 = atoi(line);
+				if (pid > 0) {
 					if (pid2 != pid) {
 						struct application *app2;
 						app2 = add_application(pid2,
