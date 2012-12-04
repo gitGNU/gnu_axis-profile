@@ -21,7 +21,7 @@ AXIS_USABLE_LIBS = UCLIBC GLIBC
 AXIS_AUTO_DEPEND = yes
 -include $(AXIS_TOP_DIR)/tools/build/rules/common.mak
 
-CFLAGS    += -DAXIS_PROFILER_VERSION=\"3.3.0\"
+CFLAGS    += -DAXIS_PROFILER_VERSION=\"3.3.2\"
 
 PROGS     = axis_profile
 SCRIPTS   = $(wildcard *.exp)
