@@ -316,14 +316,12 @@ static void get_applications(void)
 			while (!feof(f2)) {
 				getline(&line, &s, f2);
 				pid2 = atoi(line);
-				if (pid > 0) {
-					if (pid2 != pid) {
-						struct application *app2;
-						app2 = add_application(pid2,
+				if (pid2 > 0 && pid2 != pid) {
+					struct application *app2 =
+						add_application(pid2,
 							find_application(0));
-						app2->next = applications;
-						applications = app2;
-					}
+					app2->next = applications;
+					applications = app2;
 				}
 				free(line);
 				line = NULL;
