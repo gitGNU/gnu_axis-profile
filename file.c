@@ -60,10 +60,12 @@ char *get_pid_file(unsigned int pid, const char *filename)
 	return get_proc_file(proc_file);
 }
 
+#define MAPS_FILESIZE 20480
+
 char *get_proc_file(const char *filename)
 {
 	FILE *f;
-	size_t buffer_size = MAX_STRING_LEN;
+	size_t buffer_size = MAPS_FILESIZE;
 	char command[MAX_STRING_LEN];
 	char *file = malloc(buffer_size + 1);
 	size_t file_size = 0;
@@ -78,15 +80,15 @@ char *get_proc_file(const char *filename)
 	}
 
 	while (!feof(f)) {
-		size_t bytes = fread(file + file_size, 1, MAX_STRING_LEN, f);
+		size_t bytes = fread(file + file_size, 1, MAPS_FILESIZE, f);
 
 		file_size += bytes;
 
-		if (bytes < MAX_STRING_LEN) {
+		if (bytes < MAPS_FILESIZE) {
 			break;
 		}
 
-		file = realloc(file, buffer_size += MAX_STRING_LEN);
+		file = realloc(file, buffer_size += MAPS_FILESIZE);
 	}
 
 	file[file_size] = '\0';
