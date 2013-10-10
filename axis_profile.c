@@ -77,7 +77,7 @@ char *kernel_dir;
 
 static int sample_interval = 5;
 static int function_count = 20;
-static int restricted_ps = 0;
+static int restricted_ps = 1;
 static int dump_symbols = readelf;
 static int samples;
 static int lost_kernel_samples;
@@ -277,6 +277,7 @@ static void get_applications(void)
 		size_t s;
 
 		getline(&line, &s, f);
+		DEBUG(1, "%s", line);
 		if (restricted_ps) {
 			ret = sscanf(line, "%d%*[ \t]%*s%*[ \t]%d",
 				     &pid, &size);
@@ -293,6 +294,8 @@ static void get_applications(void)
 			FILE *f2;
 			line = NULL;
 			int pid2;
+
+			DEBUG(1, "found app for %d\n", pid);
 
 			if (trace_apps) {
 				int found = 0;
@@ -316,6 +319,7 @@ static void get_applications(void)
 			while (!feof(f2)) {
 				getline(&line, &s, f2);
 				pid2 = atoi(line);
+				DEBUG(1, "found sub thread for %d - %d\n", pid, pid2);
 				if (pid2 > 0 && pid2 != pid) {
 					struct application *app2 =
 						add_application(pid2,

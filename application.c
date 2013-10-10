@@ -82,8 +82,8 @@ static void add_maps_from(struct application *app, struct application *src)
 }
 
 /* Get information about application from target */
-struct application*
-add_application(unsigned int pid, struct application *kernel)
+struct application *add_application(unsigned int pid,
+				    struct application *kernel)
 {
 	char *command;
 	struct application *app;
